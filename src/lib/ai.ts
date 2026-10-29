@@ -34,19 +34,6 @@ export interface AiConfig {
   model: string;
 }
 
-export function getAiConfigStatus() {
-  const baseUrl = process.env.AI_BASE_URL;
-  const apiKey = process.env.AI_API_KEY;
-  const model = process.env.AI_MODEL;
-
-  return {
-    configured: Boolean(baseUrl && apiKey && model),
-    baseUrl: baseUrl ?? null,
-    model: model ?? null,
-    hasApiKey: Boolean(apiKey),
-  };
-}
-
 function getAiConfig(): AiConfig {
   const baseUrl = process.env.AI_BASE_URL;
   const apiKey = process.env.AI_API_KEY;
@@ -98,8 +85,33 @@ interface ChatCompletionOptions {
   maxTokens?: number;
 }
 
-async function callChatCompletion({ messages, maxTokens = 2000 }: ChatCompletionOptions) {
+export interface AiCallResult {
+  content: string;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  latencyMs: number;
+}
+
+export interface AiUsage {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  latencyMs: number;
+  attempts: number;
+}
+
+export interface AiGenerationResult {
+  data: LearningPathData;
+  usage: AiUsage;
+}
+
+async function callChatCompletion({
+  messages,
+  maxTokens = 2000,
+}: ChatCompletionOptions): Promise<AiCallResult> {
   const config = getAiConfig();
+  const debut = Date.now();
 
   const response = await fetch(`${config.baseUrl}/chat/completions`, {
     method: 'POST',
@@ -119,11 +131,19 @@ async function callChatCompletion({ messages, maxTokens = 2000 }: ChatCompletion
 
   if (!response.ok) {
     const details = await response.text().catch(() => '');
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(
+        `Authentification du fournisseur IA refusée (${response.status}). Vérifiez que AI_API_KEY correspond bien à AI_BASE_URL (OpenAI, Groq, etc.).`
+      );
+    }
+
     throw new Error(`Le modèle IA a répondu ${response.status}. ${details.slice(0, 300)}`);
   }
 
   const payload = (await response.json()) as {
     choices?: Array<{ message?: { content?: string | null } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
 
   const content = payload.choices?.[0]?.message?.content;
@@ -131,7 +151,13 @@ async function callChatCompletion({ messages, maxTokens = 2000 }: ChatCompletion
     throw new Error("Le modèle IA n'a renvoyé aucun contenu.");
   }
 
-  return content;
+  return {
+    content,
+    model: config.model,
+    promptTokens: payload.usage?.prompt_tokens ?? 0,
+    completionTokens: payload.usage?.completion_tokens ?? 0,
+    latencyMs: Date.now() - debut,
+  };
 }
 
 function parseLearningPath(content: string): LearningPathData {
@@ -154,21 +180,32 @@ function parseLearningPath(content: string): LearningPathData {
  * Appelle le modèle hébergé (API compatible OpenAI), vérifie la structure
  * de la réponse avec Zod et retente une fois si le JSON est invalide.
  */
-export async function generateLearningPath(input: LearningPathRequest): Promise<LearningPathData> {
+export async function generateLearningPath(
+  input: LearningPathRequest
+): Promise<AiGenerationResult> {
   const messages: ChatCompletionOptions['messages'] = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: buildUserPrompt(input) },
   ];
 
-  const firstAnswer = await callChatCompletion({ messages });
+  const premierAppel = await callChatCompletion({ messages });
 
   try {
-    return parseLearningPath(firstAnswer);
+    return {
+      data: parseLearningPath(premierAppel.content),
+      usage: {
+        model: premierAppel.model,
+        promptTokens: premierAppel.promptTokens,
+        completionTokens: premierAppel.completionTokens,
+        latencyMs: premierAppel.latencyMs,
+        attempts: 1,
+      },
+    };
   } catch {
-    const retryAnswer = await callChatCompletion({
+    const secondAppel = await callChatCompletion({
       messages: [
         ...messages,
-        { role: 'assistant', content: firstAnswer },
+        { role: 'assistant', content: premierAppel.content },
         {
           role: 'user',
           content:
@@ -178,28 +215,15 @@ export async function generateLearningPath(input: LearningPathRequest): Promise<
       maxTokens: 2000,
     });
 
-    return parseLearningPath(retryAnswer);
-  }
-}
-
-/**
- * Vérification légère de la disponibilité du service IA (utilisée par /admin).
- */
-export async function checkAiHealth() {
-  const startedAt = Date.now();
-
-  try {
-    await callChatCompletion({
-      messages: [{ role: 'user', content: 'Réponds uniquement avec l’objet JSON {"ok":true}.' }],
-      maxTokens: 5,
-    });
-
-    return { ok: true as const, latencyMs: Date.now() - startedAt };
-  } catch (error) {
     return {
-      ok: false as const,
-      latencyMs: Date.now() - startedAt,
-      message: error instanceof Error ? error.message : 'Erreur inconnue',
+      data: parseLearningPath(secondAppel.content),
+      usage: {
+        model: secondAppel.model,
+        promptTokens: premierAppel.promptTokens + secondAppel.promptTokens,
+        completionTokens: premierAppel.completionTokens + secondAppel.completionTokens,
+        latencyMs: premierAppel.latencyMs + secondAppel.latencyMs,
+        attempts: 2,
+      },
     };
   }
 }

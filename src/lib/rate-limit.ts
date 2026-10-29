@@ -50,11 +50,63 @@ export async function checkRateLimit(
   };
 }
 
-export async function recordAiRequest(supabase: SupabaseClient, userId: string) {
-  const { error } = await supabase.from('ai_requests').insert({ user_id: userId });
+/**
+ * Enregistre la tentative avant l'appel et renvoie son identifiant, pour
+ * pouvoir la compléter ensuite avec les métriques (tokens, latence, coût).
+ */
+export async function recordAiRequest(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<string> {
+  const { data, error } = await supabase
+    .from('ai_requests')
+    .insert({ user_id: userId })
+    .select('id')
+    .single<{ id: string }>();
+
+  if (error || !data) {
+    throw new Error(
+      `Impossible d'enregistrer l'appel au modèle : ${error?.message ?? 'aucune ligne renvoyée'}`
+    );
+  }
+
+  return data.id;
+}
+
+export interface AiRequestMetrics {
+  model: string | null;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  latencyMs: number;
+  attempts: number | null;
+  status: 'succes' | 'erreur';
+  costUsd: number | null;
+}
+
+/**
+ * Complète la ligne avec les métriques observées. Un échec ici ne doit jamais
+ * faire échouer la requête utilisateur : on se contente de journaliser.
+ */
+export async function finalizeAiRequest(
+  supabase: SupabaseClient,
+  id: string,
+  metrics: AiRequestMetrics
+) {
+  const { error } = await supabase
+    .from('ai_requests')
+    .update({
+      model: metrics.model,
+      prompt_tokens: metrics.promptTokens,
+      completion_tokens: metrics.completionTokens,
+      latency_ms: metrics.latencyMs,
+      attempts: metrics.attempts,
+      status: metrics.status,
+      cost_usd: metrics.costUsd,
+    })
+    .eq('id', id);
 
   if (error) {
-    throw new Error(`Impossible d'enregistrer l'appel au modèle : ${error.message}`);
+    console.error('[rate-limit] métriques non enregistrées :', error.message);
   }
 }
 

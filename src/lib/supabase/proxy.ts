@@ -8,7 +8,9 @@ export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // Sans configuration Supabase, on laisse passer : les pages afficheront un message d'erreur explicite.
   if (!url || !anonKey) {
@@ -37,6 +39,13 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPrivate = pathname.startsWith('/app') || pathname.startsWith('/admin');
   const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+  if (!user && pathname === '/') {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/login';
+    redirectUrl.search = '';
+    return NextResponse.redirect(redirectUrl);
+  }
 
   if (!user && isPrivate) {
     const redirectUrl = request.nextUrl.clone();

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { generateLearningPath } from '@/lib/ai';
-import { buildRateLimitMessage, checkRateLimit, recordAiRequest } from '@/lib/rate-limit';
+import { estimerCoutUsd } from '@/lib/cout';
+import {
+  buildRateLimitMessage,
+  checkRateLimit,
+  finalizeAiRequest,
+  recordAiRequest,
+} from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const requestSchema = z.object({
@@ -41,6 +47,10 @@ export async function POST(request: Request) {
     );
   }
 
+  let requestId: string | null = null;
+  let metriquesEnregistrees = false;
+  let debut = Date.now();
+
   try {
     const rateLimit = await checkRateLimit(supabase, user.id);
 
@@ -49,9 +59,24 @@ export async function POST(request: Request) {
     }
 
     // On enregistre la tentative avant l'appel : les essais en échec comptent aussi.
-    await recordAiRequest(supabase, user.id);
+    requestId = await recordAiRequest(supabase, user.id);
+    debut = Date.now();
 
     const generated = await generateLearningPath(input.data);
+
+    await finalizeAiRequest(supabase, requestId, {
+      model: generated.usage.model,
+      promptTokens: generated.usage.promptTokens,
+      completionTokens: generated.usage.completionTokens,
+      latencyMs: generated.usage.latencyMs,
+      attempts: generated.usage.attempts,
+      status: 'succes',
+      costUsd: estimerCoutUsd(
+        generated.usage.promptTokens,
+        generated.usage.completionTokens
+      ),
+    });
+    metriquesEnregistrees = true;
 
     const { data: savedPath, error: insertError } = await supabase
       .from('learning_paths')
@@ -60,9 +85,9 @@ export async function POST(request: Request) {
         topic: input.data.topic,
         level: input.data.level,
         goal: input.data.goal,
-        title: generated.title,
-        summary: generated.summary,
-        content: generated,
+        title: generated.data.title,
+        summary: generated.data.summary,
+        content: generated.data,
       })
       .select('id, title, summary, created_at')
       .single();
@@ -79,6 +104,18 @@ export async function POST(request: Request) {
       201
     );
   } catch (error) {
+    if (requestId && !metriquesEnregistrees) {
+      await finalizeAiRequest(supabase, requestId, {
+        model: process.env.AI_MODEL ?? null,
+        promptTokens: null,
+        completionTokens: null,
+        latencyMs: Date.now() - debut,
+        attempts: null,
+        status: 'erreur',
+        costUsd: null,
+      });
+    }
+
     console.error('[api/generate]', error);
     return json(
       { error: 'La génération du parcours a échoué. Merci de réessayer dans un instant.' },
