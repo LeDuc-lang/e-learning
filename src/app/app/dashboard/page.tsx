@@ -2,9 +2,9 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
-import { logoutAction } from '@/app/auth/actions';
 import { BlurText } from '@/app/components/ui/BlurText';
 import { SpotlightCard } from '@/app/components/ui/SpotlightCard';
+import UserHeader from '@/app/components/UserHeader';
 import { learningPathSchema } from '@/lib/ai';
 import { getCurrentUserWithProfile, isAdmin } from '@/lib/auth';
 
@@ -53,44 +53,7 @@ async function DashboardContent() {
   return (
     <main className="min-h-screen bg-[#F3F4F6] text-slate-800 p-6 md:p-10">
       <div className="max-w-6xl mx-auto space-y-8">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="w-8 h-8 rounded-lg bg-[#1B4332] flex items-center justify-center text-[#FAF9F6] font-semibold text-sm">
-              S
-            </span>
-            <span className="font-semibold text-[#1B4332] tracking-tight text-base">
-              Sylva<span className="text-[#74A18E] font-normal">Learn</span>
-            </span>
-          </Link>
-
-          <nav className="flex items-center gap-3 text-sm font-medium" aria-label="Navigation de l’espace">
-            <Link
-              href="/"
-              className="px-3 py-2 rounded-lg text-slate-600 hover:text-[#1B4332] hover:bg-white/70 transition-colors"
-            >
-              Générateur
-            </Link>
-            <span className="px-3 py-2 rounded-lg bg-[#1B4332] text-[#FAF9F6]">
-              Tableau de bord
-            </span>
-            {admin && (
-              <Link
-                href="/admin"
-                className="px-3 py-2 rounded-lg text-slate-600 hover:text-[#1B4332] hover:bg-white/70 transition-colors"
-              >
-                Administration
-              </Link>
-            )}
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className="px-3 py-2 rounded-lg text-slate-600 hover:text-[#1B4332] hover:bg-white/70 transition-colors"
-              >
-                Déconnexion
-              </button>
-            </form>
-          </nav>
-        </header>
+        <UserHeader currentPage="dashboard" isAdmin={admin} />
 
         <section className="relative overflow-hidden rounded-3xl bg-[#FAF9F6] border border-gray-200/90 p-8 md:p-10 shadow-xs">
           <div
