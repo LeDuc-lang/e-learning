@@ -16,10 +16,6 @@ export function getSupabaseEnv() {
   return { url, anonKey };
 }
 
-/**
- * Client Supabase côté serveur, lié à la session de l'utilisateur (cookies).
- * Toutes les requêtes passent par la Row Level Security.
- */
 export async function createSupabaseServerClient() {
   const { url, anonKey } = getSupabaseEnv();
   const cookieStore = await cookies();
@@ -35,7 +31,7 @@ export async function createSupabaseServerClient() {
             cookieStore.set(name, value, options);
           });
         } catch {
-          // Appelé depuis un Server Component : le rafraîchissement est géré par le proxy.
+
         }
       },
     },

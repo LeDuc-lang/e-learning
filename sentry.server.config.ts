@@ -1,6 +1,5 @@
 import * as Sentry from '@sentry/nextjs';
 
-// Sans DSN (développement local, ou projet non configuré), le SDK reste inactif.
 const dsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
 
 Sentry.init({
@@ -11,7 +10,7 @@ Sentry.init({
   tracesSampleRate: 0.1,
   dataCollection: {
     userInfo: false,
-    // Les prompts contiennent l'objectif personnel de l'utilisateur.
+
     httpBodies: [],
   },
 });

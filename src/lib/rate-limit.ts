@@ -19,10 +19,6 @@ export interface RateLimitResult {
   windowMinutes: number;
 }
 
-/**
- * Compte les appels IA récents de l'utilisateur.
- * La RLS garantit qu'un utilisateur ne voit que ses propres lignes.
- */
 export async function checkRateLimit(
   supabase: SupabaseClient,
   userId: string
@@ -50,10 +46,6 @@ export async function checkRateLimit(
   };
 }
 
-/**
- * Enregistre la tentative avant l'appel et renvoie son identifiant, pour
- * pouvoir la compléter ensuite avec les métriques (tokens, latence, coût).
- */
 export async function recordAiRequest(
   supabase: SupabaseClient,
   userId: string
@@ -83,10 +75,6 @@ export interface AiRequestMetrics {
   costUsd: number | null;
 }
 
-/**
- * Complète la ligne avec les métriques observées. Un échec ici ne doit jamais
- * faire échouer la requête utilisateur : on se contente de journaliser.
- */
 export async function finalizeAiRequest(
   supabase: SupabaseClient,
   id: string,

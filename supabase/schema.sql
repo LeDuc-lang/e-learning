@@ -1,21 +1,7 @@
--- =============================================================================
--- SylvaLearn — schéma Supabase (versionné)
--- À exécuter dans le SQL Editor de Supabase, puis dans chaque environnement.
---
--- Tables :
---   public.profiles       : profil applicatif lié à auth.users (rôle user/admin)
---   public.learning_paths : parcours générés par l'IA (FK -> profiles.user_id)
---   public.ai_requests    : journal des appels IA pour la limitation de débit
---
--- La RLS est activée sur TOUTES les tables. Chaque table possède une colonne
--- user_id. Les administrateurs accèdent aux données via public.is_admin().
--- =============================================================================
+
 
 create extension if not exists pgcrypto;
 
--- -----------------------------------------------------------------------------
--- 1. Profils (un par utilisateur Supabase Auth)
--- -----------------------------------------------------------------------------
 create table if not exists public.profiles (
   user_id uuid primary key references auth.users (id) on delete cascade,
   email text not null,
@@ -24,15 +10,11 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
--- `create table if not exists` ne met pas à jour une contrainte existante :
--- si la table vient d'une version antérieure du schéma, la contrainte sur le
--- rôle peut encore refuser 'admin'. On la réinstalle donc systématiquement.
 alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles
   add constraint profiles_role_check
   check (role in ('user', 'admin'));
 
--- Vérifie le rôle admin sans provoquer de récursion RLS sur profiles.
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -75,12 +57,6 @@ create policy "profiles_update_admin"
   using (public.is_admin())
   with check (public.is_admin());
 
--- Le profil est créé automatiquement par le trigger ci-dessous. Un utilisateur
--- ne peut donc ni s'attribuer un rôle ni modifier son propre rôle via l'API.
-
--- -----------------------------------------------------------------------------
--- 2. Parcours d'apprentissage générés
--- -----------------------------------------------------------------------------
 create table if not exists public.learning_paths (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (user_id) on delete cascade,
@@ -133,9 +109,6 @@ create policy "learning_paths_delete_admin"
   to authenticated
   using (public.is_admin());
 
--- -----------------------------------------------------------------------------
--- 3. Journal des appels au modèle (limitation de débit par utilisateur)
--- -----------------------------------------------------------------------------
 create table if not exists public.ai_requests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (user_id) on delete cascade,
@@ -168,8 +141,6 @@ create policy "ai_requests_select_admin"
   to authenticated
   using (public.is_admin());
 
--- Métriques d'observabilité. Ajoutées après coup (idempotent) pour ne pas casser
--- une base déjà créée : les lignes antérieures gardent des valeurs nulles.
 alter table public.ai_requests
   add column if not exists model text,
   add column if not exists prompt_tokens integer,
@@ -190,7 +161,6 @@ begin
   end if;
 end $$;
 
--- La ligne est créée avant l'appel (pour compter le débit) puis complétée après.
 drop policy if exists "ai_requests_update_own" on public.ai_requests;
 create policy "ai_requests_update_own"
   on public.ai_requests
@@ -199,8 +169,6 @@ create policy "ai_requests_update_own"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- Agrégats de consommation IA. `security invoker` : la RLS s'applique, donc un
--- administrateur voit tous les appels et un utilisateur seulement les siens.
 create or replace function public.ai_usage_stats(p_since timestamptz)
 returns table (
   appels bigint,
@@ -228,8 +196,6 @@ $$;
 revoke all on function public.ai_usage_stats(timestamptz) from public;
 grant execute on function public.ai_usage_stats(timestamptz) to authenticated;
 
--- Sonde publique utilisée par /api/health (surveillance UptimeRobot).
--- Elle ne lit aucune table : elle prouve seulement que PostgREST et Postgres répondent.
 create or replace function public.health_check()
 returns json
 language sql
@@ -243,9 +209,6 @@ $$;
 revoke all on function public.health_check() from public;
 grant execute on function public.health_check() to anon, authenticated;
 
--- -----------------------------------------------------------------------------
--- 4. Création automatique du profil à l'inscription
--- -----------------------------------------------------------------------------
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -271,15 +234,11 @@ create trigger on_auth_user_created
   for each row
   execute function public.handle_new_user();
 
--- Crée les profils manquants pour les utilisateurs déjà inscrits.
 insert into public.profiles (user_id, email)
 select id, coalesce(email, '')
 from auth.users
 on conflict (user_id) do nothing;
 
--- -----------------------------------------------------------------------------
--- 5. Privilèges (la RLS filtre ensuite ligne par ligne)
--- -----------------------------------------------------------------------------
 revoke all on public.profiles from anon;
 revoke all on public.learning_paths from anon;
 revoke all on public.ai_requests from anon;
@@ -287,21 +246,7 @@ revoke all on public.ai_requests from anon;
 grant select, update on public.profiles to authenticated;
 grant select, insert, delete on public.learning_paths to authenticated;
 grant select, insert on public.ai_requests to authenticated;
--- Seules les colonnes de métriques sont modifiables par le client (jamais user_id).
+
 grant update (model, prompt_tokens, completion_tokens, latency_ms, attempts, status, cost_usd)
   on public.ai_requests to authenticated;
 
--- -----------------------------------------------------------------------------
--- 6. Passer un utilisateur en administrateur (à exécuter une fois, avec son email)
--- -----------------------------------------------------------------------------
--- update public.profiles
--- set role = 'admin'
--- where email = 'admin@exemple.com';
-
--- -----------------------------------------------------------------------------
--- 7. Vérification : la RLS doit être active sur les trois tables
--- -----------------------------------------------------------------------------
--- select tablename, rowsecurity
--- from pg_tables
--- where schemaname = 'public'
---   and tablename in ('profiles', 'learning_paths', 'ai_requests');

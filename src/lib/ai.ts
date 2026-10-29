@@ -176,10 +176,6 @@ function parseLearningPath(content: string): LearningPathData {
   return parsed.data;
 }
 
-/**
- * Appelle le modèle hébergé (API compatible OpenAI), vérifie la structure
- * de la réponse avec Zod et retente une fois si le JSON est invalide.
- */
 export async function generateLearningPath(
   input: LearningPathRequest
 ): Promise<AiGenerationResult> {

@@ -58,7 +58,6 @@ export async function POST(request: Request) {
       return json({ error: buildRateLimitMessage(rateLimit), code: 'RATE_LIMITED' }, 429);
     }
 
-    // On enregistre la tentative avant l'appel : les essais en échec comptent aussi.
     requestId = await recordAiRequest(supabase, user.id);
     debut = Date.now();
 

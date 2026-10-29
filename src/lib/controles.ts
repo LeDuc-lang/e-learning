@@ -83,18 +83,11 @@ const controleAuth: Controle = {
   },
 };
 
-// -----------------------------------------------------------------------------
-// Services d'observabilité.
-// Sans jeton d'API, on vérifie seulement que le service répond ; avec un jeton,
-// on interroge le projet Sentry ou les moniteurs UptimeRobot.
-// -----------------------------------------------------------------------------
-
 function baseApiSentry() {
   if (process.env.SENTRY_API_URL) {
     return process.env.SENTRY_API_URL.replace(/\/+$/, '');
   }
 
-  // Le DSN porte la région d'ingestion (ex. ...ingest.de.sentry.io).
   const dsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN ?? '';
 
   if (dsn.includes('.ingest.de.')) return 'https://de.sentry.io';
@@ -129,7 +122,6 @@ const controleSentry: Controle = {
         }`;
       }
 
-      // Un jeton de source maps n'a pas forcément le droit de lire le projet.
       if (reponse.status === 401 || reponse.status === 403) {
         return 'API joignable · jeton sans accès au projet';
       }
@@ -137,8 +129,6 @@ const controleSentry: Controle = {
       throw new Error(`L’API a répondu avec le statut ${reponse.status}`);
     }
 
-    // Sans jeton : l'API Sentry répond 401 sur une route protégée, ce qui prouve
-    // qu'elle est joignable sans envoyer de données.
     const reponse = await fetch(`${base}/api/0/organizations/`, {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
@@ -203,8 +193,7 @@ const controleUptimeRobot: Controle = {
 };
 
 export const CONTROLES: Controle[] = [
-  // Le contrôle Vercel n'a de sens qu'une fois l'application déployée :
-  // en local, il n'y a pas d'environnement Vercel à interroger.
+
   ...(process.env.VERCEL ? [controleVercel] : []),
   controleSentry,
   controleIA,
@@ -212,11 +201,6 @@ export const CONTROLES: Controle[] = [
   controleAuth,
   controleUptimeRobot,
 ];
-
-// -----------------------------------------------------------------------------
-// Contrôles publics : utilisés par /api/health (surveillance externe), donc
-// sans session et sans révéler de configuration.
-// -----------------------------------------------------------------------------
 
 function configSupabasePublique() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -236,8 +220,7 @@ const controleBasePublic: Controle = {
   description: 'API REST et base de données',
   verifier: async () => {
     const { url, cle } = configSupabasePublique();
-    // Les clés publiques n'ont pas accès à la racine /rest/v1/ : on passe par
-    // une fonction dédiée, sans lecture de table (voir schema.sql).
+
     const reponse = await fetch(`${url}/rest/v1/rpc/health_check`, {
       method: 'POST',
       headers: {

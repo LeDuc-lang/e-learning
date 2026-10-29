@@ -13,7 +13,7 @@ function json(body: unknown, status = 200) {
 }
 
 export async function GET() {
-  // Les contrôles doivent être exécutés à chaque appel, jamais servis depuis un cache.
+
   await connection();
 
   const { user, profile } = await getCurrentUserWithProfile();

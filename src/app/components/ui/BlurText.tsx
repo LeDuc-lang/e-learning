@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 interface BlurTextProps {
   text: string;
   className?: string;
-  delayStep?: number; // Délai en ms entre chaque mot
+  delayStep?: number;
 }
 
 function subscribeToReducedMotion(onChange: () => void) {
@@ -32,7 +32,7 @@ export const BlurText: React.FC<BlurTextProps> = ({
   const containerRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    // Déclenchement unique à l'apparition à l'écran
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -54,7 +54,6 @@ export const BlurText: React.FC<BlurTextProps> = ({
 
   const words = text.split(' ');
 
-  // Rendu instantané sans effet si prefers-reduced-motion est actif
   if (reducedMotion) {
     return <h1 className={className}>{text}</h1>;
   }

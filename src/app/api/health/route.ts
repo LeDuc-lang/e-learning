@@ -2,12 +2,6 @@ import { connection } from 'next/server';
 import { CONTROLES_PUBLICS } from '@/lib/controles';
 import { calculerStatutGlobal, executerControle } from '@/lib/statut';
 
-/**
- * Route de santé publique, prévue pour la surveillance externe (UptimeRobot).
- * Elle ne demande aucune session et n'expose ni configuration ni message
- * d'erreur détaillé : uniquement le nom du service, son statut et sa latence.
- * HTTP 503 dès qu'un service est en panne, pour que le moniteur alerte.
- */
 export async function GET() {
   await connection();
 

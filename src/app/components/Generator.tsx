@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { BlurText } from '@/app/components/ui/BlurText';
 import { SpotlightCard } from '@/app/components/ui/SpotlightCard';
 
-// --- Types du formulaire de génération ---
 type SkillLevel = 'debutant' | 'intermediaire' | 'avance';
 type TimeFrequency = 'jour' | 'semaine';
 type DurationUnit = 'jours' | 'semaines';
@@ -52,7 +51,7 @@ const TOPIC_SUGGESTIONS = [
 ];
 
 export default function HomePage() {
-  // --- États du formulaire ---
+
   const [formData, setFormData] = useState<LearningPathFormValues>({
     topic: '',
     level: 'debutant',
@@ -68,7 +67,6 @@ export default function HomePage() {
   const [statusKind, setStatusKind] = useState<'success' | 'error' | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  // Calcul subtil du taux de remplissage pour guider l'utilisateur en douceur
   const completionPercentage = useMemo(() => {
     let filled = 0;
     if (formData.topic.trim().length > 2) filled += 1;
@@ -85,7 +83,6 @@ export default function HomePage() {
     Number(formData.timeAmount) > 0 &&
     Number(formData.durationAmount) > 0;
 
-  // --- Gestionnaires d'événements ---
   const handleChange = <K extends keyof LearningPathFormValues>(
     field: K,
     value: LearningPathFormValues[K]
@@ -151,20 +148,19 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#F3F4F6] text-slate-800 selection:bg-[#74A18E]/30 selection:text-[#1B4332]">
-      {/* Contenu principal centré sur la création de parcours */}
+
       <main className="max-w-5xl mx-auto px-6 py-8 md:py-12">
         <section
           aria-labelledby="generator-heading"
           className="relative overflow-hidden rounded-3xl bg-[#FAF9F6] border border-gray-200/90 p-6 sm:p-10 md:p-12 shadow-xs"
         >
-          {/* Halo d'ambiance très discret (respecte prefers-reduced-motion) */}
+
           <div
             aria-hidden="true"
             className="pointer-events-none absolute -top-28 -right-28 w-96 h-96 rounded-full bg-[#74A18E]/15 blur-3xl motion-safe:animate-pulse"
             style={{ animationDuration: '9s' }}
           />
 
-          {/* Trame géométrique subtile en vert sauge */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 opacity-35"
@@ -177,7 +173,6 @@ export default function HomePage() {
             }}
           />
 
-          {/* En-tête de la section d'accueil */}
           <div className="relative z-10 max-w-2xl space-y-3 mb-8">
             <div className="inline-flex items-center gap-2 text-xs font-medium text-[#1B4332] bg-[#74A18E]/15 border border-[#74A18E]/30 px-3 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-[#1B4332]" />
@@ -196,12 +191,11 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Conteneur du formulaire enrichi avec SpotlightCard (React Bits) */}
           <SpotlightCard
             spotlightColor="rgba(116, 161, 142, 0.10)"
             className="relative z-10 bg-white/80 backdrop-blur-xs border-gray-200/90 p-6 sm:p-8 md:p-10 hover:translate-y-0"
           >
-            {/* Barre supérieure d'indication de complétion du formulaire */}
+
             <div className="flex items-center justify-between gap-4 pb-6 mb-6 border-b border-gray-200/70">
               <div>
                 <h2 className="text-base font-semibold text-[#1B4332]">
@@ -236,7 +230,7 @@ export default function HomePage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8" noValidate>
-              {/* 1. Sujet à apprendre */}
+
               <div className="space-y-2.5">
                 <label
                   htmlFor="topic"
@@ -259,7 +253,6 @@ export default function HomePage() {
                   />
                 </div>
 
-                {/* Suggestions rapides interactives */}
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
                   <span className="text-xs text-slate-400 mr-1">Exemples :</span>
                   {TOPIC_SUGGESTIONS.map((suggestion) => (
@@ -279,7 +272,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* 2. Niveau actuel (Sélecteur par cartes interactives) */}
               <div className="space-y-2.5">
                 <span className="block text-sm font-medium text-[#1B4332]">
                   2. Quel est votre niveau actuel sur ce sujet ?
@@ -334,7 +326,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* 3. Objectif d'apprentissage */}
               <div className="space-y-2.5">
                 <div className="flex items-baseline justify-between">
                   <label
@@ -361,9 +352,8 @@ export default function HomePage() {
                 />
               </div>
 
-              {/* 4. Temps disponible & 5. Durée souhaitée */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
-                {/* Temps consacré */}
+
                 <div className="space-y-2.5 bg-[#FAF9F6] p-4 rounded-2xl border border-gray-200/80">
                   <label
                     htmlFor="timeAmount"
@@ -419,7 +409,6 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Durée totale souhaitée */}
                 <div className="space-y-2.5 bg-[#FAF9F6] p-4 rounded-2xl border border-gray-200/80">
                   <label
                     htmlFor="durationAmount"
@@ -472,7 +461,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Récapitulatif dynamique & Bouton de soumission */}
               <div className="pt-4 border-t border-gray-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="text-xs text-slate-500 leading-relaxed">
                   {formData.topic.trim() ? (
@@ -518,7 +506,6 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {/* Retour visuel discret après validation */}
               {statusMessage && (
                 <div
                   role={statusKind === 'error' ? 'alert' : 'status'}

@@ -10,7 +10,7 @@ interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const SpotlightCard: React.FC<SpotlightCardProps> = ({
   children,
   className = '',
-  // Vert sauge très subtil (opacité 12%)
+
   spotlightColor = 'rgba(116, 161, 142, 0.12)',
   ...props
 }) => {
@@ -34,7 +34,7 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
       className={`group relative overflow-hidden rounded-2xl bg-[#FAF9F6] border border-gray-200/80 transition-all duration-300 hover:border-[#74A18E]/60 hover:shadow-sm motion-safe:hover:-translate-y-0.5 ${className}`}
       {...props}
     >
-      {/* Halo lumineux réactif au survol (désactivé si réduction de mouvement) */}
+
       <div
         className="pointer-events-none absolute -inset-px opacity-0 transition-opacity duration-500 motion-safe:group-hover:opacity-100"
         style={{

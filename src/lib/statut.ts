@@ -17,21 +17,12 @@ export type Controle = {
 const DELAI_MAX_MS = 5000;
 const SEUIL_DEGRADE_MS = 2000;
 
-/**
- * Statut global : la panne prime sur la dégradation, qui prime sur le nominal.
- * Partagé par la route admin et la route de santé publique.
- */
 export function calculerStatutGlobal(services: ResultatControle[]): Statut {
   if (services.some((service) => service.statut === 'en_panne')) return 'en_panne';
   if (services.some((service) => service.statut === 'degrade')) return 'degrade';
   return 'operationnel';
 }
 
-/**
- * Exécute un contrôle de santé en mesurant sa latence.
- * Un contrôle qui dépasse 5 secondes est déclaré en panne ; un service qui
- * répond en plus de 2 secondes est considéré comme dégradé.
- */
 export async function executerControle(controle: Controle): Promise<ResultatControle> {
   const debut = Date.now();
   let minuteur: ReturnType<typeof setTimeout> | undefined;
