@@ -73,6 +73,14 @@ est effectuée.
 - **Métriques** : colonnes ajoutées à `ai_requests` (idempotentes), update limité
   aux colonnes de mesure.
 
+### Administrateur
+
+Il y a déjà un compte admin qui est:
+
+email: inivasim4@gmail.com
+mdp: iniva007!
+
+
 ## Lancer le projet en local
 
 ### Prérequis
