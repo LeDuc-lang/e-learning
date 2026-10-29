@@ -239,6 +239,23 @@ select id, coalesce(email, '')
 from auth.users
 on conflict (user_id) do nothing;
 
+-- -----------------------------------------------------------------------------
+-- 6. Utilisateur administrateur de référence (professeur)
+-- -----------------------------------------------------------------------------
+-- Rôle réservé au compte du professeur pour la correction et la supervision.
+-- Idempotent : insère le profil s'il manque, puis met à jour le rôle.
+-- Remplacez l'adresse e-mail ci-dessous si le compte du professeur est différent.
+
+insert into public.profiles (user_id, email)
+select id, coalesce(email, '')
+from auth.users
+where lower(email) = lower('admin@gmail.com')
+on conflict (user_id) do nothing;
+
+update public.profiles
+set role = 'admin'
+where email = 'admin@gmail.com';
+
 revoke all on public.profiles from anon;
 revoke all on public.learning_paths from anon;
 revoke all on public.ai_requests from anon;
