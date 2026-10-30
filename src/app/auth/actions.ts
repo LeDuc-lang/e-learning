@@ -21,7 +21,14 @@ export async function loginAction(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent('Identifiants invalides.')}`);
+    const message =
+      error.code === 'email_not_confirmed'
+        ? 'Confirmez votre adresse e-mail depuis le lien reçu avant de vous connecter.'
+        : error.code === 'invalid_credentials'
+          ? 'Adresse e-mail ou mot de passe incorrect. Vérifiez aussi que le compte a bien été créé.'
+          : 'Connexion impossible pour le moment. Réessayez et vérifiez la configuration Auth de Supabase.';
+
+    redirect(`/login?error=${encodeURIComponent(message)}`);
   }
 
   redirect(next);
@@ -51,7 +58,7 @@ export async function signupAction(formData: FormData) {
 
   if (!data.session) {
     redirect(
-      `/login?message=${encodeURIComponent('Compte créé. Vérifiez votre email pour confirmer votre inscription.')}`
+      `/login?message=${encodeURIComponent('Inscription reçue. Ouvrez le lien de confirmation envoyé par e-mail avant de vous connecter. Vérifiez aussi vos courriers indésirables.')}`
     );
   }
 
